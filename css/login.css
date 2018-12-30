@@ -1,0 +1,78 @@
+.login.row {
+  padding: 15px;
+  width: 550px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.login.row .col {
+  width: 250px;
+  float: left;
+}
+
+.login.row .col.left {
+  color: #333;
+}
+
+.login.row .col.left h1 {
+  font-size: 15px;
+  line-height: 1;
+  margin: 0 0 10px;
+  padding: 0;
+}
+.login.row .col.left ul {
+  font-size: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.login.row .col.right {
+  margin-left: 20px;
+  padding-left: 20px;
+  padding-top: 20px;
+  padding-bottom: 14px;
+  border-left: 1px solid #aaa;
+  text-align: center;
+  line-height: 35px;
+}
+.login.row a.login {
+  -webkit-box-shadow: 0 3px 6px 0 rgba(255,210,0,.38);
+  background-color: #ffd200;
+  border: 1px solid #ffd200;
+  box-shadow: 0 3px 6px 0 rgba(255,210,0,.38);
+  color: #333;
+  display: block;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  height: 40px;
+  line-height: 40px;
+  text-align: center;
+  text-decoration: none;
+}
+.login.row a.register {
+  -webkit-box-shadow: 0 3px 6px 0 rgba(34, 34, 34, 0.38);
+  background-color: #222;
+  border: 1px solid #222;
+  box-shadow: 0 3px 6px 0 rgba(34, 34, 34, 0.38);
+  color: white;
+  display: block;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  height: 40px;
+  line-height: 40px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.login.row a.login:hover {
+  background-color: #ffe500;
+}
+
+.login.row a.register:hover {
+  background-color: #3c3c3c;
+}

@@ -1,152 +1,132 @@
 <!DOCTYPE html>
-<html>
+<html ng-app="AbccTools">
 <head>
   <title>ABCC Toole</title>
-  <style type="text/css">
-  </style>
-  <script type="text/javascript" src="/lib/jquery-3.3.1.min.js"></script>
-  <script type="text/javascript" src="/js/popup.js"></script>
 
+  <link rel="stylesheet" type="text/css" href="/lib/angular-material.min.css">
+  <link rel="stylesheet" type="text/css" href="/lib/md-data-table.min.css">
+
+  <link rel="stylesheet" type="text/css" href="/icons/cryptocoins.css">
+  <link rel="stylesheet" type="text/css" href="/icons/cryptocoins-colors.css">
+
+  <link rel="stylesheet" type="text/css" href="/css/icon.css">
+  <link rel="stylesheet" type="text/css" href="/css/login.css">
   <link rel="stylesheet" type="text/css" href="/css/popup.css">
 
+  <script type="text/javascript" src="/lib/jquery.min.js"></script>
+  <script type="text/javascript" src="/lib/angular.min.js"></script>
+
+  <script type="text/javascript" src="/lib/angular-animate.min.js"></script>
+  <script type="text/javascript" src="/lib/angular-aria.min.js"></script>
+  <script type="text/javascript" src="/lib/angular-messages.min.js"></script>
+  <script type="text/javascript" src="/lib/angular-material.min.js"></script>
+  <script type="text/javascript" src="/lib/md-data-table.min.js"></script>
+
+  <script type="text/javascript" src="/js/content_scripts.js"></script>
+
+  <style>
+    table.md-table th.md-column,
+    table.md-table td.md-cell {
+      padding: 0 5px!important;
+      font-size: 12px!important;
+    }
+  </style>
 </head>
 
 <body>
-<div id="main-menu" style="display: none!important;">
-  <div class="menu-item" id="eyedropper-menuitem">
-    <span class="menu-item-text">--Pick Color From Page</span>
-  </div>
+  <div ng-controller="Controller" ng-cloak>
 
-  <div class="menu-separator current-color-ops-separator" style="display:none"></div>
+    <div ng-if="isLogin">
 
-  <div class="menu-item" id="color-picker-menuitem">
-    <div class="current-color" style="display:none"></div>
-    <span class="menu-item-text">--Color Picker</span>
-  </div>
+      <div style="width: 500px" ng-cloak>
+        <md-content>
+          <md-tabs md-dynamic-height md-border-bottom>
+            <md-tab label="TICKERS">
+              <md-content class="md-padding tickers">
 
-  <div class="menu-item copy-op-menuitem" id="show-copy-to-clipboard-menuitem" style="display:none">
-    <span class="menu-item-text">--Copy To Clipboard...</span>
-  </div>
+                <md-table-container>
+                  <table md-table  multiple ng-model="selected">
+                    <thead md-head md-order="ticker_sort" md-on-reorder="Sorting">
+                    <tr md-row>
+                      <th md-column class="pair" style="width: 100px">
+                        <md-button class="md-icon-button" ng-class="ticker_pair != 'btc' ? 'no-active' : 'active'" ng-click="ticker_pair = 'btc'">
+                          <md-icon><i class="cc BTC"></i></md-icon>
+                        </md-button>
+                        <md-button class="md-icon-button" ng-class="ticker_pair != 'eth' ? 'no-active' : 'active'" ng-click="ticker_pair = 'eth'">
+                          <md-icon><i class="cc ETH"></i></md-icon>
+                        </md-button>
+                        <md-button class="md-icon-button" ng-class="ticker_pair != 'usdt' ? 'no-active' : 'active'" ng-click="ticker_pair = 'usdt'">
+                          <md-icon><i class="cc USDT"></i></md-icon>
+                        </md-button>
+                      </th>
+                      <th md-column md-numeric>Price</th>
+                      <th md-column md-numeric md-order-by="tick.spread">Spread</th>
+                      <th md-column md-numeric md-order-by="tick.change">Change</th>
+                    </tr>
+                    </thead>
+                    <tbody md-body>
+                    <tr md-row ng-repeat="tick in ticker | filter: { quote_unit: ticker_pair }" ng-class="tick.change >= 0 ? 'green' : 'red'">
+                      <td md-cell>
+                        <i style="padding-right: 5px; position: relative; float: left; font-size: 25px!important;" class="cc {{tick.base_unit.toUpperCase()}}"></i>
+                        <div>
+                          <span><b>{{tick.quote_unit.toUpperCase()}}</b>/{{tick.base_unit.toUpperCase()}}</span>
+                          <span style="display: block; ">vol: {{tick.volume | number:0 }}</span>
+                        </div>
+                      </td>
+                      <td md-cell class="price">{{tick.sell}}</td>
+                      <td md-cell class="spread" ng-class="tick.spread <= 0.5 ? 'red' : 'green'">{{tick.spread | number:2 }}</td>
+                      <td md-cell class="change">{{tick.change| number:2}}</td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </md-table-container>
 
-  <div class="menu-item" id="resample-last-location-menuitem" style="display:none">
-    <span class="menu-item-text">--Re-sample Last Location</span>
-  </div>
 
-  <div class="menu-separator current-color-ops-separator" style="display:none"></div>
+              </md-content>
+            </md-tab>
+            <md-tab label="ACCOUNT">
+              <md-content class="md-padding">
+                <p>on development stage...</p>
+              </md-content>
+            </md-tab>
+            <md-tab label="NEWS">
+              <md-content class="md-padding">
+                <p>on development stage...</p>
+              </md-content>
+            </md-tab>
+            <md-tab label="ORDERS">
+              <md-content class="md-padding">
+                <p>on development stage...</p>
+              </md-content>
+            </md-tab>
+            <md-tab label="BOT">
+              <md-content class="md-padding">
+                <p>on development stage...</p>
+              </md-content>
+            </md-tab>
+          </md-tabs>
+        </md-content>
+      </div>
 
-  <div class="menu-item" id="show-history-menuitem">
-    <span class="menu-item-text">--Picked Color History</span>
-  </div>
-
-  <div class="menu-separator"></div>
-
-  <div class="menu-item" id="page-color-analyzer-menuitem">
-    <span class="menu-item-text">--Webpage Color Analyzer</span>
-  </div>
-
-  <div class="menu-item" id="palette-browser-menuitem">
-    <span class="menu-item-text">--Palette Browser</span>
-  </div>
-
-  <div class="menu-item" id="gradient-generator-menuitem">
-    <span class="menu-item-text">--CSS Gradient Generator</span>
-  </div>
-
-  <div class="menu-separator"></div>
-
-  <div class="menu-item" id="help-menuitem">
-    <span class="menu-item-text">--Help</span>
-  </div>
-
-  <div class="menu-separator"></div>
-
-  <div class="menu-item" id="options-menuitem">
-    <span class="menu-item-text">--Options</span>
-  </div>
-</div> <!-- main-menu -->
-
-<div id="copy-to-clipboard-menu" style="display:none">
-  <div class="menu-item copy-op-menuitem" id="copy-rgb-menuitem" style="display:none">
-    <span class="menu-item-text">--Copy rgb(255, 255, 255)</span>
-  </div>
-
-  <div class="menu-item copy-op-menuitem" id="copy-rgb-perc-menuitem" style="display:none">
-    <span class="menu-item-text">--Copy rgb(100%, 100%, 100%)</span>
-  </div>
-
-  <div class="menu-item copy-op-menuitem" id="copy-hsl-menuitem" style="display:none">
-    <span class="menu-item-text">--Copy hsl(0, 0%, 100%)</span>
-  </div>
-
-  <div class="menu-item copy-op-menuitem" id="copy-hex-menuitem" style="display:none">
-    <span class="menu-item-text">--Copy #FFFFFF</span>
-  </div>
-
-  <div class="menu-item copy-op-menuitem" id="copy-hex-no-hash-menuitem" style="display:none">
-    <span class="menu-item-text">--Copy FFFFFF</span>
-  </div>
-</div>
-
-<div id="help-menu" style="display:none">
-  <div class="menu-item noicon" id="online-help-menuitem">
-    <span class="menu-item-text">--Online Help</span>
-  </div>
-
-  <div class="menu-item noicon" id="whats-new-menuitem">
-    <span class="menu-item-text">--What's New</span>
-  </div>
-
-  <div class="menu-item noicon" id="colorzilla-homepage-menuitem">
-    <span class="menu-item-text">--ColorZilla Homepage</span>
-  </div>
-
-  <div class="menu-item noicon" id="about-colorzilla-menuitem">
-    <span class="menu-item-text">--About ColorZilla</span>
-  </div>
-</div>
-
-<div id="colorpicker" style="display:none" class="main-panel">
-  <div class="colorpicker-widget"></div>
-  <div class="colorpicker-css-output">
-    <input class="rgb-color" type="text" readonly>
-    <input class="hsl-color" type="text" readonly>
-  </div>
-</div>
-
-<div id="webpage-color-analyzer-panel" style="display:none" class="main-panel">
-  <h1>--CSS Color Analysis Results</h1>
-  <div class="colors-container"></div>
-  <div class="selected-color-info">
-    <input class="rgb-color" type="text" readonly>
-    <input class="hex-color" type="text" readonly>
-    <span class="elem-info">&nbsp;</span>
-  </div>
-  <div class="button-container">
-    <button class="dialog-button ok-button">--Ok</button>
-    <button class="dialog-button cancel-button">--Cancel</button>
-  </div>
-</div>
-
-<div id="palette-browser-panel" style="display:none;" class="main-panel">
-  <div class="column column-1">
-    <div class="palette-chooser-container">
-      <select class="palette-chooser"></select>
     </div>
-    <div class="palette-colors"></div>
-  </div>
-  <div class="column column-2">
-    <div class="current-color"></div>
-    <span class="color-rgb-label">R: </span><input type="text" class="color-rgb color-r" readonly><br>
-    <span class="color-rgb-label">G: </span><input type="text" class="color-rgb color-g" readonly><br>
-    <span class="color-rgb-label">B: </span><input type="text" class="color-rgb color-b" readonly><br>
-    <input type="text" class="color-hex" readonly><br>
-    <input type="text" class="color-name" readonly><br>
-    <div class="button-container">
-      <button class="dialog-button ok-button">--Ok</button>
-      <button class="dialog-button cancel-button">--Cancel</button>
+
+    <div ng-if="!isLogin">
+      <div class="login row">
+        <div class="col left">
+          <h1>ABCC.COM</h1>
+          <ul>
+            <li><b>High Liquidity</b> - Efficient tradings Low transaction fees</li>
+            <li><b>Reliability</b> - Operating 24/7</li>
+            <li><b>Security</b> - Rich experiences in digital asset services and financing Professional distributed structure and Anti DDoS Protection</li>
+            <li><b>Multiple Investment</b> - Provide various investment targets, including crypto exchange and options, based on users risk preference</li>
+          </ul>
+        </div>
+        <div class="col right">
+          <a class="login" href="https://abcc.com/signin" target="_blank">Login</a> OR <a class="register" href="https://abcc.com/at_invitation/share?aff=0ec814" target="_blank">Register</a>
+        </div>
+      </div>
     </div>
   </div>
-</div>
 
 </body>
 </html>

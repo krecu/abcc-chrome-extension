@@ -1,29 +1,56 @@
 'use strict';
 
+const EXT_NAME = "ABCC:";
+const MSG_INIT = "init core";
+const MSG_NOT_LOGIN = "user not login, waiting...";
+
 class AbccTools {
 
     constructor() {
 
+        this.account = false;
         this.state = true;
-        this.wss = null;
         this.cookies = [];
-        this.api = 'https://abcc.com';
+        this.api_uri = 'https://abcc.com';
+
+        this.wss = false;
+        this.wss_uri = 'wss://push.abcc.com/app/2d1974bfdde17e8ecd3e7f0f6e39816b?protocol=7&client=js&version=4.2.2&flash=false';
+        this.wss_id = '';
+        this.wss_key = '';
+        this.wss_channel_private = 'private-PEARDN5RHHCTIO';
+        this.wss_channel_market = 'market-global';
+        this.ticker = [];
+        this.volume = [];
     }
 
-    onReady () {
+    init () {
         let $self = this;
+
+        console.info(EXT_NAME, MSG_INIT);
 
         $self.loadCookie().then(function (res) {
             $self.cookies = res;
         }).then(function () {
-            if ($self.isLogin()) {
-                $self.initWss()
-            }
-        })
+            return new Promise(function (resolve, reject) {
+                $self.isLogin().then(function (user) {
+                    if (user) {
+                        $self.account = user;
+                    } else {
+                        console.warn(EXT_NAME, MSG_NOT_LOGIN);
+                        $self.account = false;
+                    }
+                })
+            });
+        });
 
+        if (!$self.wss && $self.account) {
+            $self.initWss().then(function () {
+                $self.initEvents();
+            })
+        }
     };
 
-    MessageList (title, desc) {
+    Message (title, desc) {
         chrome.notifications.create(window.performance.now().toString(), {
             type: "basic",
             title: title,
@@ -38,75 +65,62 @@ class AbccTools {
 
         return new Promise(function (resolve, reject) {
 
-            $self.wss = {
-                client: new WebSocket("wss://push.abcc.com/app/2d1974bfdde17e8ecd3e7f0f6e39816b?protocol=7&client=js&version=4.2.2&flash=false"),
-                id: "",
-                key: ""
+            $self.wss = new WebSocket($self.wss_uri);
+
+            // subscribe global ticker market
+            $self.wss.onopen = function() {
+                $self.wss.send('{"event":"pusher:subscribe","data":{"channel":"{channel}"}}'.replace("{channel}", $self.wss_channel_market));
             };
 
-            $self.wss.client.onopen = function() {
-                $self.wss.client.send('{"event":"pusher:subscribe","data":{"channel":"market-global"}}');
-            };
+            $self.wss.onmessage = function(event) {
 
-            $self.wss.client.onmessage = function(event) {
-
-                var data = JSON.parse(event.data);
+                let
+                    data = JSON.parse(event.data),
+                    body = JSON.parse(data.data);
 
                 switch (data.event) {
                     case "tickers":
+                        document.dispatchEvent(new CustomEvent('ticker', {
+                            'detail': body
+                        }));
                         break;
                     case "order":
-                        var res = JSON.parse(data.data);
-
-                        $self.MessageList("Order: #" + res.id + " - ", `
-                        ` + res.ord_type + ` order on pair ` + res.market + `, has ` + res.state + ``
-                        );
-                        break;
-                    case "pusher_internal:subscription_succeeded":
-                        var res = JSON.parse(data.data);
-                        if (res.channel == "private-PEARDN5RHHCTIO") {
-                            resolve(true)
-                        }
+                        document.dispatchEvent(new CustomEvent('order', {
+                            'detail': body
+                        }));
                         break;
                     case "pusher:connection_established":
-                        var res = JSON.parse(data.data),
-                            form = [],
-                            xhr = new XMLHttpRequest();
 
-                        // @todo check soket init id
-                        $self.wss.id = res.socket_id;
+                        let
+                            form = [];
 
-                        form.push("socket_id=" + $self.wss.id);
-                        form.push("channel_name=private-PEARDN5RHHCTIO");
-                        var line = encodeURI(form.join("&"));
+                        if (body.socket_id == undefined || body.socket_id == '') {
+                            resolve(false)
+                        }
+                        $self.wss_id = body.socket_id;
 
-                        xhr.open('POST','https://abcc.com/pusher/auth', false);
-                        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-                        xhr.onreadystatechange = function() {
-                            if (this.readyState == 4 && this.status == 200) {
-                                var res = JSON.parse(xhr.responseText);
+                        form.push("socket_id=" + $self.wss_id);
+                        form.push("channel_name=" + $self.wss_channel_private);
+
+                        $.ajax({
+                            url: $self.api_uri + "/pusher/auth",
+                            type: "POST",
+                            contentType: "application/x-www-form-urlencoded",
+                            data: encodeURI(form.join("&")),
+                            success: function(res){
                                 if (res.auth) {
-                                    $self.wss.key = res.auth;
-                                    $self.wss.client.send('{"event":"pusher:subscribe","data":{"auth":"{key}","channel":"private-PEARDN5RHHCTIO"}}'.replace('{key}', $self.wss.key));
+                                    $self.wss_key = res.auth;
+                                    $self.wss.send('{"event":"pusher:subscribe","data":{"auth":"{key}","channel":"{channel}"}}'.replace('{key}', $self.wss_key).replace('{channel}', $self.wss_channel_private));
+                                    resolve(true);
                                 } else {
+                                    resolve(false);
                                 }
-                            } else {
-
+                            },
+                            error: function () {
+                                resolve(false);
                             }
-                        };
-                        xhr.onprogress = function () {
-                            if (xhr.status != 200) {
-                                reject()
-                            }
-                        };
 
-                        xhr.onload = function () {
-                            if (xhr.status != 200) {
-                                reject()
-                            }
-                        };
-
-                        xhr.send(line);
+                        });
 
                         break;
                 }
@@ -114,20 +128,127 @@ class AbccTools {
         });
     };
 
+    initEvents() {
+
+        let $self = this;
+
+        // update ticker
+        document.addEventListener('ticker', function (e) {
+            chrome.runtime.sendMessage({action: "ticker", data: e.detail});
+        }, false);
+
+        // update hitory
+        document.addEventListener('history', function (e) {
+        }, false);
+
+        // update order state
+        document.addEventListener('order', function (e) {
+            $self.orderNotify(e.detail);
+        }, false);
+    };
+
+    /**
+     * Start update volume value
+     */
+    initHistoryLoop() {
+        let $self = this;
+
+        setInterval(function () {
+            $.ajax({
+                url: $self.api_uri + "/graphql",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({
+                    "operationName":"getHistoryTrades",
+                    "variables":{
+                        "page":1,
+                        "page_size":20,
+                        "from":1545685200,
+                        "to":1545771600
+                    },
+                    "query":"query getHistoryTrades($order_id: String, $from: String, $to: String, $market: String, $bu: String, $qu: String, $page: Int, $page_size: Int) { historyTrade(order_id: $order_id, from: $from, to: $to, market: $market, bu: $bu, qu: $qu, page: $page, page_size: $page_size) {trades meta  __typename}}"
+                }),
+                headers: {
+                    "x-csrf-token": $self.getCsrf(),
+                },
+                success: function(res){
+                    document.dispatchEvent(new CustomEvent('history', {
+                        'detail': res
+                    }));
+                },
+                error: function () {
+                    reject("history error");
+                }
+
+            });
+        }, 5000);
+    };
+
+    /**
+     * Notify order state
+     * @param order
+     */
+    orderNotify(order) {
+        let $self = this;
+        $self.Message("Order: #" + order.id, order.ord_type + ` order on pair ` + order.market + `, has ` + order.state);
+    };
+
+
     /**
      * Check user login
-     * @return {boolean}
+     * @return {Promise}
      */
     isLogin () {
-        var $self = this;
 
-        for (var i in $self.cookies) {
-            if ($self.cookies[i].name == "_abcc_session") {
-                return true;
+        let $self = this;
+
+        return new Promise(function (resolve, reject) {
+
+            let isUser = false;
+
+            for (let i in $self.cookies) {
+                if ($self.cookies[i].name == "_abcc_session") {
+                    isUser = true;
+                    break;
+                }
+            }
+
+            if (isUser) {
+                $self.ApiGetAccount().then(function (user) {
+                    resolve(user);
+                });
+            } else {
+                resolve(false);
+            }
+        });
+    };
+
+    /**
+     * Get CSRF token value
+     * @return {boolean}
+     */
+    getCsrf () {
+
+        let $self = this;
+        for (let i in $self.cookies) {
+            if ($self.cookies[i].name == "csrfToken") {
+                return $self.cookies[i].value;
             }
         }
         return false;
     };
+
+    getVolume() {
+        let res = [];
+        for (let i in this.volume) {
+            res.push({
+                name: i,
+                fee: this.volume[i].fee,
+                volume: this.volume[i].volume,
+            })
+        }
+        return res;
+    }
 
     /**
      * Load cookies
@@ -139,12 +260,59 @@ class AbccTools {
                 resolve(cookie);
             });
         });
+    };
+
+    ping() {
+
+        let $self = this;
+
+        setInterval(function () {
+            $self.init();
+        }, 5000);
+    };
+
+    /**
+     * Load account info
+     * @return {Promise}
+     * @constructor
+     */
+    ApiGetAccount () {
+
+        let $self = this;
+        let $query = {
+            "operationName": "getAccounts",
+            "variables":{},
+            "query": "query getAccounts {optionBalance { currency  balance locked  deposit_address memo default_withdraw_fund_source_id minimum_withdraw_amount withdraw_fee require_memo readable_name withdraw_amount_h24 withdraw_amount_max_h24 min_confirmations max_confirmations can_deposit can_withdraw vote_currency withdraw_fixed fee __typename }}"
+        };
+
+        return new Promise(function (resolve, reject) {
+            $.ajax({
+                url: $self.api_uri + "/graphql",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify($query),
+                headers: {
+                    "x-csrf-token": $self.getCsrf(),
+                },
+                success: function(res){
+                    if (res.data) {
+                        resolve(res.data);
+                    } else {
+                        resolve(false);
+                    }
+                },
+                error: function () {
+                    resolve(false);
+                }
+
+            });
+        });
     }
 
 }
 
-var proto = new AbccTools();
-
 window.onload = function () {
-    proto.onReady();
+    window._AbccTools = new AbccTools();
+    window._AbccTools.init();
+    window._AbccTools.ping();
 };
